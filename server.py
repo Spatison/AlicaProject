@@ -133,22 +133,22 @@ def handle_dialog(req, res):
                 'hide': True
             }
         ]
-        sessionStorage['game_started'] = False
+        sessionStorage[user_id] = {}
+        sessionStorage[user_id]['game_started'] = False
         return
 
-    if not sessionStorage['game_started']:
-        if is_part_in_list(req['request']['original_utterance'].lower(), ["хорошо", "отлично", "великолепно", "шикарно"]):
-            res['response']['text'] = 'Давай проверим?'
-            return
-        elif is_part_in_list(req['request']['original_utterance'].lower(), ["не", "плохо", "так себе", "ужасно"]):
+    if not sessionStorage[user_id]['game_started']:
+        if is_part_in_list(req['request']['original_utterance'].lower(), ["не", "плохо", "так себе", "ужасно"]):
             res['response']['text'] = 'Это исправимо!'
-            return
+        else:
+            res['response']['text'] = 'Давай проверим?'
 
         res['response']['text'] = 'Я буду называть субъекты, а ты должен будеш назвать их столицу. Начнем!'
+        sessionStorage[user_id]['game_started'] = True
         sessionStorage[user_id]['attempt'] = 1
-        sessionStorage['game_started'] = True
         sessionStorage[user_id]['guessed_regions'] = []
         sessionStorage[user_id]['score'] = 0
+        return
     else:
         play_game(req, res)
 
@@ -160,7 +160,7 @@ def play_game(req, res):
         if len(sessionStorage[user_id]['guessed_regions']) == len(regions):
             score = 82 * 3 / sessionStorage[user_id]['score'] * 100
             res['response']['text'] = f'На этом субъекты Российсой федерации закончились. Ты знаеш Россию на {score}%'
-            sessionStorage['game_started'] = False
+            sessionStorage[user_id]['game_started'] = False
         reg = random.choice(list(regions))
         while reg in sessionStorage[user_id]['guessed_regions']:
             reg = random.choice(list(regions))
@@ -170,7 +170,7 @@ def play_game(req, res):
         reg = sessionStorage[user_id]['reg']
         if get_city(req) == regions[reg]:
             res['response']['text'] = 'Правильно!'
-            sessionStorage[user_id]['guessed_cities'].append(reg)
+            sessionStorage[user_id]['guessed_regions'].append(reg)
             sessionStorage[user_id]['attempt'] = 1
             if attempt == 2:
                 sessionStorage[user_id]['score'] += 2
@@ -180,10 +180,10 @@ def play_game(req, res):
         else:
             if attempt == 3:
                 res['response']['text'] = f'Вы пытались. Это {regions[reg]}.'
-                sessionStorage[user_id]['guessed_cities'].append(reg)
+                sessionStorage[user_id]['guessed_regions'].append(reg)
                 return
             else:
-                res['response']['text'] = 'А вот и не угадал! Попробуй еще раз.'
+                res['response']['text'] = get_city(req)
     sessionStorage[user_id]['attempt'] += 1
 
 
