@@ -139,24 +139,42 @@ def handle_dialog(req, res):
 
     if not sessionStorage[user_id]['game_started']:
         if is_part_in_list(req['request']['original_utterance'].lower(), ["не", "плохо", "так себе", "ужасно"]):
-            res['response']['text'] = 'Это исправимо!'
+            res['response']['text'] = 'Это исправимо! Я буду называть субъекты, а ты должен будеш назвать их столицу. Начнем?'
         else:
-            res['response']['text'] = 'Давай проверим?'
+            res['response']['text'] = 'Давай проверим? Я буду называть субъекты, а ты должен будеш назвать их столицу. Начнем?'
 
-        res['response']['text'] = 'Я буду называть субъекты, а ты должен будеш назвать их столицу. Начнем!'
         sessionStorage[user_id]['game_started'] = True
         sessionStorage[user_id]['attempt'] = 1
         sessionStorage[user_id]['guessed_regions'] = []
         sessionStorage[user_id]['score'] = 0
+        res['response']['buttons'] = [
+            {
+                'title': 'Давай',
+                'hide': True
+            },
+            {
+                'title': 'Не хочу',
+                'hide': True
+            }
+        ]
         return
     else:
-        play_game(req, res)
+        if is_part_in_list(req['request']['original_utterance'].lower(), ['не', 'нет', 'отстань']):
+            res['response']['end_session'] = True
+            res['response']['text'] = 'Есди захотите поиграть, я всегда тут!'
+            return
+        else:
+            play_game(req, res)
 
 
 def play_game(req, res):
     user_id = req['session']['user_id']
     attempt = sessionStorage[user_id]['attempt']
     if attempt == 1:
+        if is_part_in_list(req['request']['original_utterance'].lower(), ['не', 'нет', 'отстань', 'все', 'стоп']):
+            res['response']['end_session'] = True
+            res['response']['text'] = 'Хорошо поиграли!'
+            return
         if len(sessionStorage[user_id]['guessed_regions']) == len(regions):
             score = 82 * 3 / sessionStorage[user_id]['score'] * 100
             res['response']['text'] = f'На этом субъекты Российсой федерации закончились. Ты знаеш Россию на {score}%'
@@ -168,10 +186,20 @@ def play_game(req, res):
         res['response']['text'] = reg
     else:
         reg = sessionStorage[user_id]['reg']
-        if get_city(req) == regions[reg]:
-            res['response']['text'] = 'Правильно!'
+        if get_city(req) == regions[reg].lower():
+            res['response']['text'] = 'Правильно! Продолжим?'
             sessionStorage[user_id]['guessed_regions'].append(reg)
             sessionStorage[user_id]['attempt'] = 1
+            res['response']['buttons'] = [
+                {
+                    'title': 'Давай',
+                    'hide': True
+                },
+                {
+                    'title': 'Не хочу',
+                    'hide': True
+                }
+            ]
             if attempt == 2:
                 sessionStorage[user_id]['score'] += 2
             else:
@@ -179,11 +207,22 @@ def play_game(req, res):
             return
         else:
             if attempt == 3:
-                res['response']['text'] = f'Вы пытались. Это {regions[reg]}.'
+                res['response']['text'] = f'Вы пытались. Это {regions[reg]}. Продолжим?'
                 sessionStorage[user_id]['guessed_regions'].append(reg)
+                sessionStorage[user_id]['attempt'] = 1
+                res['response']['buttons'] = [
+                    {
+                        'title': 'Давай',
+                        'hide': True
+                    },
+                    {
+                        'title': 'Не хочу',
+                        'hide': True
+                    }
+                ]
                 return
             else:
-                res['response']['text'] = get_city(req)
+                res['response']['text'] = 'А вот и не угадал! Попробуй еще раз.'
     sessionStorage[user_id]['attempt'] += 1
 
 
